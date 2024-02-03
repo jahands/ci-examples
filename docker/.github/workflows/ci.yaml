@@ -1,0 +1,25 @@
+name: CI with Earthly
+
+on:
+  push:
+    branches: ['*']
+
+jobs:
+  build:
+    runs-on: ubicloud-standard-2-arm
+    env:
+      EARTHLY_TOKEN: ${{ secrets.EARTHLY_TOKEN }}
+      FORCE_COLOR: 1
+    steps:
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+      - uses: earthly/actions-setup@v1
+        with:
+          version: v0.8.3
+      - uses: actions/checkout@v2
+      - name: Test
+        run: earthly --org orgname --sat xs-sat --ci +test
+      - name: Run build
+        run: earthly --org orgname --sat xs-sat --ci --push +docker --DOCKER_TAG=${{ steps.extract_branch.outputs.branch }}

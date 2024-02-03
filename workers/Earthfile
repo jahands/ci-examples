@@ -1,0 +1,33 @@
+VERSION 0.8
+PROJECT orgname/projectname
+
+prepare-workspace:
+	FROM node:20-bookworm-slim
+	WORKDIR /work
+	RUN apt-get update \
+		&& apt-get install -y curl jq git \
+		&& rm -rf /var/lib/apt/lists/*
+
+	RUN corepack prepare pnpm@8 --activate
+	RUN corepack enable pnpm
+	CACHE /pnpm-store
+	RUN pnpm config set store-dir /pnpm-store
+
+clean-repo:
+	FROM +prepare-workspace
+	COPY . .
+	RUN git clean -xfd
+
+install-deps:
+	FROM +clean-repo
+	WORKDIR /work
+	RUN pnpm install --frozen-lockfile
+	SAVE ARTIFACT .
+
+test:
+	FROM +install-deps
+	RUN pnpx turbo test --filter '!./apps/some-app'
+
+deploy:
+	FROM +install-deps
+	RUN --secret CLOUDFLARE_API_TOKEN --secret SENTRY_AUTH_TOKEN pnpx turbo deploy

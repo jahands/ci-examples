@@ -1,0 +1,36 @@
+VERSION 0.8
+PROJECT orgname/projectname
+
+install-deps:
+	FROM oven/bun:1
+	WORKDIR /work
+	COPY package.json bun.lockb .
+	RUN bun install --frozen-lockfile --production
+	SAVE ARTIFACT .
+
+archive-repo:
+	FROM bitnami/git
+	WORKDIR /work
+	COPY . .
+	RUN git archive -o app.tar.gz --format=tar.gz HEAD
+	SAVE ARTIFACT app.tar.gz
+
+extract-repo:
+	FROM oven/bun:1
+	WORKDIR /work
+	COPY +archive-repo/app.tar.gz .
+	RUN tar -xf app.tar.gz && rm app.tar.gz
+	COPY +install-deps/work .
+	SAVE ARTIFACT .
+
+test:
+	FROM +extract-repo
+	RUN bun run test:ci
+
+docker:
+	FROM oven/bun:1
+	WORKDIR /work
+	COPY +extract-repo/work .
+	ENTRYPOINT ["bun", "start"]
+	ARG DOCKER_TAG
+	SAVE IMAGE --push git.example.com/username/packagename:$DOCKER_TAG
