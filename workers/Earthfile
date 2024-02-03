@@ -10,8 +10,6 @@ prepare-workspace:
 
 	RUN corepack prepare pnpm@8 --activate
 	RUN corepack enable pnpm
-	CACHE /pnpm-store
-	RUN pnpm config set store-dir /pnpm-store
 
 clean-repo:
 	FROM +prepare-workspace
@@ -21,6 +19,8 @@ clean-repo:
 install-deps:
 	FROM +clean-repo
 	WORKDIR /work
+	CACHE /pnpm-store
+	RUN pnpm config set store-dir /pnpm-store
 	RUN pnpm install --frozen-lockfile
 	SAVE ARTIFACT .
 
